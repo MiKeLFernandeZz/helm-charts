@@ -1,0 +1,673 @@
+global:
+  security:
+    allowInsecureImages: true
+  deviceIP: 172.16.57.20
+
+## @param postgresql  PostgreSQL settings
+postgresql:
+  ## @param postgresql.enabled Enable PostgreSQL subchart
+  ##
+  enabled: true
+  ## @param postgresql.persistence  PostgreSQL persistence settings
+  ##
+  image:
+    ## @param postgresql.image.repository  PostgreSQL image repository
+    ##
+    repository: bitnamilegacy/postgresql
+
+    debug: true
+  ## @param postgresql.auth  PostgreSQL authentication settings
+  ##
+  auth:
+    ## @param postgresql.auth.enablePostgresUser Assign a password to the "postgres" admin user. Otherwise, remote access will be blocked for this user
+    ##
+    enablePostgresUser: true
+    ## @param postgresql.auth.username  PostgreSQL username
+    ##
+    username: ai_toolkit_airflow_user
+    ## @param postgresql.auth.password  PostgreSQL user password
+    ##
+    password: ai_toolkit_airflow_password_123
+    ## @param postgresql.auth.database  PostgreSQL database name
+    ##
+    database: ai_toolkit_airflow_db
+    ## @param postgresql.auth.postgresPassword  PostgreSQL superuser password
+    ##
+    postgresPassword: "ToolkitAdminPassw0rd"
+  ## @param postgresql.architecture PostgreSQL architecture (`standalone` or `replication`)
+  ##
+  architecture: "standalone"
+  ## @param postgresql.fullnameOverride  PostgreSQL fullname override
+  ##
+  fullnameOverride: "ai-toolkit-postgresql"
+  ## @param postgresql.replication  PostgreSQL replication settings
+  ##
+  replication:
+    ## @param postgresql.replication.numSynchronousReplicas Number of replicas that will have synchronous replication. Note: Cannot be greater than `readReplicas.replicaCount`.
+    ##
+    numSynchronousReplicas: 0
+  ## @param postgresql.service.port  PostgreSQL service port
+  ##
+  containerPorts:
+    ## @param postgresql.service.port.postgresql  PostgreSQL port
+    ##
+    postgresql: 5432
+  ## @param postgresql.readReplicas  PostgreSQL read replicas settings
+  ##
+  readReplicas:
+    ## @param postgresql.readReplicas.replicaCount  Number of read replicas
+    ##
+    replicaCount: 0
+  ## @param postgresql.primary  PostgreSQL primary settings
+  ##
+  primary:
+
+    persistence:
+      ## @param postgresql.primary.persistence.enabled  Enable persistence for PostgreSQL primary
+      ##
+      enabled: true
+      ## @param postgresql.primary.persistence.size  PostgreSQL primary persistence size
+      ##
+      size: 8Gi
+    # @param postgresql.primary.initdb  PostgreSQL primary initialization settings
+    #
+    initdb:
+
+      user: "postgres"
+      password: "ToolkitAdminPassw0rd"
+      # @param postgresql.primary.initdb.scripts  Enable initialization scripts
+      #
+      scriptsConfigMap: postgres-init-scripts
+
+## @param minio MinIO settings    
+minio:
+  ## @param minio.enabled Enable MinIO subchart
+  ##
+  enabled: true
+
+  fullnameOverride: "ai-toolkit-minio"
+  ## @param minio.image  MinIO image settings
+  ##
+  image:
+    ## @param minio.image.repository  MinIO image repository
+    ##
+    repository: bitnamilegacy/minio
+  ## @param minio.mode Server mode (`standalone` or `distributed`)
+  ##
+  mode: standalone
+  ## @param minio.auth  MinIO authentication settings
+  ##
+  auth:
+    ## @param minio.auth.rootUser  MinIO root user
+    ##
+    rootUser: ai_toolkit
+    ## @param minio.auth.rootPassword  MinIO root password
+    ##
+    rootPassword: ai_toolkit123
+
+  service:
+    ## @param minio.service.type  MinIO service type
+    ##
+    type: LoadBalancer
+    ## @param minio.service.ports  MinIO service ports
+    ##
+    ports:
+      api: 9000
+      console: 9001
+  ## @param minio.statefulset  MinIO statefulset settings
+  ##
+  statefulset:
+    ## @param minio.statefulset.replicas Number of MinIO server replicas
+    ##
+    replicaCount: 1
+  ## @param minio.buckets  MinIO buckets to be created
+  ##
+  defaultBuckets: "airflow-logs,mlflow-artifacts"
+  ## @param minio.clientImage  MinIO client image settings
+  ##
+  clientImage:
+    ## @param minio.clientImage.repository  MinIO client image repository
+    ##
+    repository: bitnamilegacy/minio-client
+
+  defaultInitContainers:
+    volumePermissions:
+      image:
+        repository: bitnamilegacy/os-shell
+
+  console:
+    image:
+      repository: bitnamilegacy/minio-object-browser
+
+
+
+## @param airflow Airflow settings
+airflow:
+  ## @param airflow.enabled Enable Airflow subchart
+  ##
+  enabled: true
+
+  fullnameOverride: "ai-toolkit-airflow"
+  ## @param airflow.executor Airflow executor type (`LocalExecutor`, `LocalKubernetesExecutor`, `CeleryExecutor`, `KubernetesExecutor` or `CeleryKubernetesExecutor`)
+  ##
+  executor: "KubernetesExecutor"
+  ## @param airflow.multiNamespaceMode If true, it creates ClusterRole/ClusterRolebinding (with access to entire cluster)
+  ##
+  multiNamespaceMode: true
+  ## @param airflow.env Extra environment variables for all airflow containers
+  ##
+  env:
+    - name: "AIRFLOW_VAR_POSTGRES_DATABASE"
+      value: ai_toolkit_airflow_db
+    - name: "AIRFLOW_VAR_POSTGRES_HOST"
+      value: ai-toolkit-postgresql
+    - name: "AIRFLOW_VAR_POSTGRES_PORT"
+      value: "5432"
+    - name: "AIRFLOW_VAR_POSTGRES_USERNAME"
+      value: ai_toolkit_airflow_user
+    - name: "AIRFLOW_VAR_POSTGRES_PASSWORD"
+      value: ai_toolkit_airflow_password_123
+    - name: AIRFLOW_VAR_MLFLOW_ENDPOINT
+      value: http://ai-toolkit-mlflow-tracking.ai-toolkit.svc.cluster.local:5000
+    - name: AIRFLOW_VAR_MLFLOW_TRACKING_USERNAME
+      value: ai_toolkit_mlflow_user
+    - name: AIRFLOW_VAR_MLFLOW_TRACKING_PASSWORD
+      value: ai_toolkit_mlflow_password_123
+    - name: AIRFLOW_VAR_REDIS_HOST
+      value: ai-toolkit-redis-headless.ai-toolkit.svc.cluster.local
+    - name: AIRFLOW_VAR_REDIS_PORT
+      value: "6379"
+    - name: AIRFLOW_VAR_REDIS_PASSWORD
+      value: ai_toolkit_redis_password_123
+    ## TODO: Uncomment and set the following variables according to your IDS/ECC setup
+    # - name: "AIRFLOW_VAR_CONNECTOR_EDGE_IP"
+    #   value: "{CONNECTOR_EDGE_IP}"
+    # - name: "AIRFLOW_VAR_CONNECTOR_CLOUD_IP"
+    #   value: "{CONNECTOR_CLOUD_IP}"
+    # - name: "AIRFLOW_VAR_AUTH_PROXY_USER"
+    #   value: {AUTH_PROXY_USER}
+    # - name: "AIRFLOW_VAR_AUTH_PROXY_PASSWORD"
+    #   value: {AUTH_PROXY_PASSWORD}
+    # - name: "AIRFLOW_VAR_AUTH_ECC_USER"
+    #   value: {AUTH_ECC_USER}
+    # - name: "AIRFLOW_VAR_AUTH_ECC_PASSWORD"
+    #   value: {AUTH_ECC_PASSWORD}
+    # - name: "AIRFLOW_VAR_IDS_PROXY_PORT"
+    #   value: "{IDS_PROXY_PORT}"
+    # - name: "AIRFLOW_VAR_ECC_API_PORT"
+    #   value: "{ECC_API_PORT}"
+    # - name: "AIRFLOW_VAR_IDS_EXTERNAL_ECC_IDS_PORT"
+    #   value: "{IDS_EXTERNAL_ECC_IDS_PORT}"
+
+  secret:
+    - envName: "AIRFLOW_CONN_AWS"
+      secretName: "my-airflow-connections"
+      secretKey: "AIRFLOW_CONN_AWS"
+  ## @param airflow.extraSecrets Extra Kubernetes Secrets to be created
+  ##
+  extraSecrets:
+    my-airflow-connections:
+      data: |
+        AIRFLOW_CONN_AWS: {{ printf "aws://ai_toolkit:ai_toolkit123@/?endpoint_url=http%%3A%%2F%%2Fai-toolkit-minio%%3A9000" | b64enc }}
+  ## @param airflow.postgresql PostgreSQL settings
+  ##
+  postgresql:
+    ## @param airflow.postgresql.enabled Disable PostgreSQL subchart (we are using an external PostgreSQL)
+    ##
+    enabled: false
+  ## @param airflow.data Airflow database & redis config
+  ##
+  data:
+    ## @param airflow.metadataConnection Airflow metadata database connection string
+    ##
+    metadataConnection:
+      ## @param airflow.metadataConnection.uri Airflow metadata database URI
+      ##
+      user: ai_toolkit_airflow_user
+      ## @param airflow.metadataConnection.password Airflow metadata database password
+      ##
+      pass: ai_toolkit_airflow_password_123
+      ## @param airflow.metadataConnection.protocol Airflow metadata database protocol
+      ##
+      protocol: postgresql
+      ## @param airflow.metadataConnection.host Airflow metadata database host
+      ##
+      host: ai-toolkit-postgresql
+      ## @param airflow.metadataConnection.port Airflow metadata database port
+      ##
+      port: 5432
+      ## @param airflow.metadataConnection.db Airflow metadata database name
+      ##
+      db: ai_toolkit_airflow_db
+      ## @param airflow.metadataConnection.sslmode Airflow metadata database SSL mode
+      ##
+      sslmode: disable
+  
+  webserver:
+    enabled: true
+    ## @param airflow.webserver.defaultUser  Airflow webserver default user settings
+    ##
+    defaultUser:
+      ## @param airflow.webserver.defaultUser.enabled  Enable creation of default Airflow webserver user
+      ##
+      enabled: true
+      ## @param airflow.webserver.defaultUser.role  Airflow webserver default user role
+      ##
+      username: admin
+      ## @param airflow.webserver.defaultUser.password  Airflow webserver default user password
+      ##
+      password: admin123
+    ## @param airflow.webserver.service  Airflow webserver service settings
+    ##
+    service:
+      ## @param airflow.webserver.service.type  Airflow webserver service type
+      ##
+      type: LoadBalancer
+      ## @param airflow.webserver.service.ports  Airflow webserver service ports
+      ##
+      ports:
+        - name: airflow-ui
+          port: 8080
+          targetPort: airflow-ui
+  ## @param airflow.triggerer  Airflow triggerer settings
+  ##
+  triggerer:
+    ## @param airflow.triggerer.persistence  Airflow triggerer persistence settings
+    ##
+    persistence:
+      ## @param airflow.triggerer.persistence.enabled  Enable persistence for Airflow triggerer
+      ##
+      enabled: true
+      ## @param airflow.triggerer.persistence.size  Airflow triggerer persistence size
+      ##
+      size: 10Gi
+  ## @param airflow.config  Airflow configuration settings
+  ##
+  config:
+    ## @param airflow.config.logging  Airflow logging settings
+    ##
+    logging:
+      ## @param airflow.config.logging.remote_logging  Enable remote logging
+      ##
+      remote_logging: "True"
+      ## @param airflow.config.logging.remote_base_log_folder  Remote base log folder
+      ##
+      remote_base_log_folder: "s3://airflow-logs"
+      ## @param airflow.config.logging.remote_log_conn_id  Remote log connection ID
+      ##
+      remote_log_conn_id: aws
+      ## @param airflow.config.logging.encrypt_s3_logs  Encrypt S3 logs
+      ##
+      encrypt_s3_logs: "False"
+      ## @param airflow.config.logging.colored_console_log  Enable colored console logs
+      ##
+      colored_console_log: "False"
+    ## @param airflow.config.scheduler  Airflow scheduler settings
+    ##
+    scheduler:
+      ## @param airflow.config.scheduler.dag_dir_list_interval  Airflow DAG directory list interval
+      ##
+      dag_dir_list_interval: 30
+  ## @param airflow.dags  Airflow DAGs settings
+  ##
+  dags:
+    ## @param airflow.gitSync  Airflow Git-Sync settings
+    ##
+    gitSync:
+      ## @param airflow.gitSync.enabled  Enable Airflow Git-Sync
+      ##
+      enabled: true
+      ## @param airflow.gitSync.repo  Airflow Git-Sync repository URL
+      ##
+      repo: "git@gitlab.ikerlan.es:DAE/personal/mfernandezlabastida/repo-central.git" #TODO: Change to your repo
+      ## @param airflow.gitSync.branch  Airflow Git-Sync repository branch
+      ##
+      branch: "main"
+      ## @param airflow.gitSync.subPath  Airflow Git-Sync repository subPath
+      ##
+      subPath: ""
+      ## @param airflow.gitSync.sshKeySecret  Airflow Git-Sync SSH key secret name
+      ##
+      sshKeySecret: "airflow-ssh-secret"
+      wait: 15
+      # period: 15s
+  ## @param airflow.logs  Airflow logs settings
+  ##
+  logs:
+    ## @param airflow.logs.persistence  Airflow logs persistence settings
+    ##
+    persistence:
+      ## @param airflow.logs.persistence.enabled  Enable persistence for Airflow logs
+      ##
+      enabled: false
+      ## @param airflow.logs.persistence.size  Airflow logs persistence size
+      ##
+      size: 5Gi
+  ## @param airflow.migrateDatabaseJob  Airflow migrate database job settings
+  ##
+  migrateDatabaseJob:
+    ## @param airflow.migrateDatabaseJob.extraInitContainers  Airflow migrate database job extra init containers
+    ##
+    extraInitContainers:
+      - name: wait-for-postgres
+        image: postgres:17
+        env:
+          - name: PGPASSWORD
+            value: "ai_toolkit_airflow_password_123"
+        command:
+          - sh
+          - -c
+          - |
+            until psql -h ai-toolkit-postgresql -U ai_toolkit_airflow_user -d ai_toolkit_airflow_db -c "SELECT 1;" >/dev/null 2>&1; do
+              echo "Esperando a que Postgres esté listo..."
+              sleep 2
+            done
+            echo "Postgres disponible"
+
+## @param redis Redis settings
+##
+redis:
+  ## @param redis.enabled Enable Redis subchart
+  ##
+  enabled: true
+  ## @param redis.fullnameOverride  Redis fullname override
+  ##
+  fullnameOverride: "ai-toolkit-redis"
+  ## @param redis.image  Redis image settings
+  ##
+  image:
+    ## @param redis.image.repository  Redis image repository
+    ##
+    repository: bitnamilegacy/redis
+  ## @param redis.architecture  Redis  architecture (`standalone` or `replication`)
+  ##
+  architecture: "standalone"
+  ## @param redis.auth  Redis authentication settings
+  ##
+  auth:
+    ## @param redis.auth.password  Redis password
+    ##
+    password: "ai_toolkit_redis_password_123"
+  ## @param redis.replica  Redis replica settings
+  ##
+  replica:
+    ## @param redis.replica.replicaCount Number of Redis replicas
+    ##
+    replicaCount: 0
+
+## @param mlflow Mlflow settings
+##
+mlflow:
+  ## @param mlflow.enabled Enable Mlflow subchart
+  ##
+  enabled: true
+  ## @param mlflow.fullnameOverride  Mlflow fullname override
+  ##
+  fullnameOverride: "ai-toolkit-mlflow"
+  ## @param mlflow.image  Mlflow image settings
+  ##
+  image:
+    ## @param mlflow.image.repository  Mlflow image repository
+    ##
+    repository: bitnamilegacy/mlflow
+  ## @param mlflow.gitImage  Mlflow git image settings
+  ##
+  gitImage:
+    ## @param mlflow.gitImage.repository  Mlflow git image repository
+    ##
+    repository: bitnamilegacy/git
+  ## @param mlflow.waitContainer  Mlflow wait container settings
+  ##
+  waitContainer:
+    ## @param mlflow.waitContainer.image  Mlflow wait container image settings
+    ##
+    image:
+      repository: bitnamilegacy/os-shell
+  ## @param mlflow.postgresql  Mlflow PostgreSQL settings
+  ##
+  postgresql:
+    ## @param mlflow.postgresql.enabled Disable PostgreSQL subchart (we are using an external PostgreSQL)
+    ##
+    enabled: false
+
+  
+  ## @param mlflow.tracking  Mlflow tracking service settings
+  ##
+  tracking:
+    auth:
+      ## @param mlflow.auth.enabled  Enable Mlflow authentication
+      ##
+      enabled: false
+      ## @param mlflow.auth.username  Mlflow username
+      ##
+      username: ""
+      ## @param mlflow.auth.password  Mlflow password
+      ##
+      password: ""
+    ## @param mlflow.tracking.service  Mlflow tracking service settings
+    ##
+    service:
+      ## @param mlflow.tracking.service.type  Mlflow tracking service type
+      ##
+      type: LoadBalancer
+      ## @param mlflow.tracking.service.ports  Mlflow tracking service ports
+      ##
+      ports:
+        http: 5000
+        https: 443
+  ## @param mlflow.externalDatabase  Mlflow external database settings (If postgresql.enabled is false)
+  externalDatabase:
+    ## @param mlflow.externalDatabase.host  Mlflow external database host
+    ##
+    host: ai-toolkit-postgresql
+    ## @param mlflow.externalDatabase.port  Mlflow external database port
+    ##
+    port: 5432
+    ## @param mlflow.externalDatabase.user  Mlflow external database user
+    ##
+    user: ai_toolkit_mlflow_user
+    ## @param mlflow.externalDatabase.db  Mlflow external database name
+    ##
+    database: ai_toolkit_mlflow_db
+    ## @param mlflow.externalDatabase.authDatabase  Mlflow external database authentication database
+    ##
+    authDatabase: ai_toolkit_mlflow_auth_db
+    ## @param mlflow.externalDatabase.password  Mlflow external database password
+    ##
+    password: ai_toolkit_mlflow_password_123
+  ## @param mlflow.minio  Mlflow MinIO settings
+  ##
+  minio:
+    ## @param mlflow.minio.enabled Disable MinIO subchart (we are using an external MinIO)
+    ##
+    enabled: false
+  ## @param mlflow.externalS3  Mlflow external S3 storage settings (If minio.enabled is false)
+  ##
+  externalS3:
+    ## @param mlflow.externalS3.host  Mlflow external S3 host
+    ##
+    host: ai-toolkit-minio
+    ## @param mlflow.externalS3.port  Mlflow external S3 port
+    ##
+    port: 9000
+    ## @param mlflow.externalS3.accessKeyID  Mlflow external S3 access key ID
+    ##
+    accessKeyID: ai_toolkit
+    ## @param mlflow.externalS3.accessKeySecret  Mlflow external S3 access key secret
+    ##
+    accessKeySecret: ai_toolkit123
+    ## @param mlflow.externalS3.protocol  Mlflow external S3 protocol
+    ##
+    protocol: http
+    ## @param mlflow.externalS3.bucket  Mlflow external S3 bucket name
+    ##
+    bucket: mlflow-artifacts
+    ## @param mlflow.externalS3.serveArtifacts  Enable Mlflow to serve artifacts from S3
+    ##
+    serveArtifacts: true
+
+## @param docker-registry Docker Registry settings
+##
+docker-registry:
+  ## @param registry.enabled Enable Registry subchart
+  ##
+  enabled: true
+  ## @param registry.service  Registry service settings
+  ##
+  service:
+    ## @param registry.service.type  Registry service type
+    ##
+    type: LoadBalancer
+    ## @param registry.service.port  Registry service port
+    ##
+    port: 4000
+
+  persistence:
+    ## @param registry.persistence.enabled  Enable persistence for Registry
+    ##
+    enabled: true
+    ## @param registry.persistence.size  Registry persistence size
+    ##
+    size: 10Gi
+
+dcgm-exporter:
+  ## @param dcgm.enabled Enable DCGM exporter
+  ##
+  enabled: false
+  ## @param dcgm.runtimeClassName  DCGM exporter runtime class name
+  ##
+  runtimeClassName: nvidia
+  ## @param dcgm.service  DCGM exporter service settings
+  ##
+  service:
+    annotations:
+      prometheus.io/scrape: "true"
+      prometheus.io/port: "9400"
+      prometheus.io/path: "/metrics"
+
+kube-prometheus-stack:
+  enabled: false
+  alertmanager:
+    service:
+      type: ClusterIP
+  grafana:
+    # datasources:
+    #   datasources.yaml:
+    #     apiVersion: 1
+    #     datasources:
+    #     - name: Loki
+    #       type: loki
+    #       uuid: 42
+    #       access: proxy
+    #       url: http://{{ .Release.Name }}-grafana-loki-gateway
+    dashboardProviders:
+      dashboardproviders.yaml:
+        apiVersion: 1
+        providers:
+        - name: 'default'
+          orgId: 1
+          folder: ''
+          type: file
+          disableDeletion: false
+          editable: true
+          options:
+            path: /var/lib/grafana/dashboards/default
+    dashboardsConfigMaps:
+      default: "grafana-dashboards"
+    adminPassword: admin
+    service:
+      type: LoadBalancer
+      port: 3000
+  nodeExporter:
+    enabled: true
+    # hostRootFsMount: false
+  prometheus:
+    service:
+      type: ClusterIP
+
+## @param nvidia-device-plugin NVIDIA device plugin settings
+##
+nvidia-device-plugin:
+  ## @param nvidia-device-plugin.enabled Enable NVIDIA device plugin
+  ##
+  enabled: false
+  ## @param nvidia-device-plugin.allowDefaultNamespace Allow NVIDIA device plugin to be deployed in default namespace
+  ##
+  allowDefaultNamespace: true
+
+## @param daggen DAG generator UI settings
+##
+daggen:
+  ## @param daggen.enabled Enable DAG generator UI
+  ##
+  enabled: true
+  ## @param daggen.appLabel  DAG generator UI app label
+  ##
+  appLabel: daggen-app
+  ## @param daggen.name DAG generator UI name
+  ##
+  name: daggen
+  ## @param daggen.replicas  DAG generator UI deployment replicas
+  ##
+  replicas: 1
+  ## @param daggen.runAsUser  DAG generator UI deployment runAsUser
+  ##
+  runAsUser: 1000
+  ## @param daggen.image  DAG generator UI image settings
+  ##
+  image:
+    ## @param daggen.image.repository  DAG generator UI image repository
+    ##
+    repository: mfernandezlabastida/airflow-connect
+    ## @param daggen.image.tag  DAG generator UI image tag\
+    ##
+    tag: gpu-gh
+    ## @param daggen.image.pullPolicy  DAG generator UI image pull policy
+    ##
+    pullPolicy: IfNotPresent
+
+  env:
+    ## @param daggen.env.REGISTRY_URL  DAG generator UI Docker registry URL
+    ##
+    REGISTRY_URL: "docker-registry"
+    ## @param daggen.env.REGISTRY_PORT  DAG generator UI Docker registry port
+    ##
+    REGISTRY_PORT: "4000"
+    ## @param daggen.env.AIRFLOW_URL  DAG generator UI Airflow URL
+    ##
+    AIRFLOW_URL: "ai-toolkit-webserver:8080"
+    ## @param daggen.env.AIRFLOW_PUBLIC_URL  DAG generator UI Airflow public URL
+    ##
+    # AIRFLOW_PUBLIC_URL: "http://<AIRFLOW_PUBLIC_IP>:<AIRFLOW_PUBLIC_PORT>" #TODO: Change to your Airflow public IP and Port
+
+  rbac:
+    ## @param daggen.rbac.clusterRole DAG generator UI ClusterRole settings
+    ##
+    clusterRole:
+      ## @param daggen.rbac.clusterRole.name  DAG generator UI ClusterRole name
+      ##
+      name: daggen-clusterrole
+    ## @param daggen.rbac.clusterRoleBinding DAG generator UI ClusterRoleBinding settings
+    ##
+    clusterRoleBinding:
+      ## @param daggen.rbac.clusterRoleBinding.name  DAG generator UI ClusterRoleBinding name
+      ##
+      name: daggen-clusterrolebinding
+    ## @param daggen.rbac.serviceAccountName  DAG generator UI ServiceAccount name
+    ##
+    serviceAccountName: daggen-serviceaccount
+  ## @param daggen.service  DAG generator UI service settings
+  ##
+  service:
+    ## @param daggen.service.name  DAG generator UI service name
+    ##
+    name: daggen-service
+    ## @param daggen.service.type  DAG generator UI service type
+    ##
+    type: LoadBalancer
+    ## @param daggen.service.port  DAG generator UI service port
+    ##
+    port: 3100
+    ## @param daggen.service.targetPort  DAG generator UI service target port
+    ##
+    targetPort: 3000

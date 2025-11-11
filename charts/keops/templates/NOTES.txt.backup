@@ -1,0 +1,59 @@
+{{- /*
+NOTES.txt — Helm will render this and print it after install/upgrade.
+*/ -}}
+
+=======================================================================
+AI Toolkit has been deployed into the '{{ .Release.Namespace }}' namespace.
+
+How to access the Airflow UI
+----------------------------
+
+{{- $svcType := .Values.airflow.webserver.service.type | default "ClusterIP" -}}
+{{- $svcPorts := .Values.airflow.webserver.service.ports | default (list (dict "port" 8080)) -}}
+{{- $port := (index $svcPorts 0).port | default 8080 -}}
+
+{{- if eq $svcType "LoadBalancer" }}
+👉 Your Airflow will be exposed externally once Kubernetes assigns the public IP.
+
+To get the external IP address, run the following command:
+  kubectl get svc -n {{ .Release.Namespace }} {{ .Release.Name }}-webserver \
+    -o jsonpath='{.status.loadBalancer.ingress[0].ip}'
+
+When the IP is available:
+  URL: http://<PUBLIC_IP>:{{ $port }}
+
+{{- else if eq $svcType "NodePort" }}
+👉 Your Airflow will be exposed on a port of the cluster nodes.
+
+To access the Airflow UI, use the IP of any node in the cluster and the assigned port:
+
+  URL: http://<NODE_IP>:{{ $port }}
+
+{{- else if eq $svcType "ClusterIP" }}
+👉 Your Airflow is only accessible within the Kubernetes cluster.
+
+To access the Airflow UI, you can use a port-forwarding tunnel:
+
+  kubectl port-forward -n {{ .Release.Namespace }} svc/{{ .Values.airflow.fullnameOverride }}-web 8080:{{ $port }}
+
+{{- end }}
+
+{{- $gitSyncEnabled := .Values.airflow.dags.gitSync.enabled | default false -}}
+{{- if $gitSyncEnabled }}
+
+DAGs loaded via GitSync
+-------------------------
+
+Your Airflow DAGs are being loaded via GitSync from the repository '{{ .Values.airflow.dags.gitSync.repo }}' in the '{{ .Values.airflow.dags.gitSync.branch }}' branch.
+
+To update the DAGs, push your changes to the configured Git repository and branch.
+
+{{- end }}
+
+How to access MLflow UI
+-------------------------
+
+{{- $svcType := .Values.mlflow.tracking.service.type | default "ClusterIP" -}}
+{{- $port := .Values.mlflow.tracking.service.ports.http | default 5000 -}}
+
+=======================================================================

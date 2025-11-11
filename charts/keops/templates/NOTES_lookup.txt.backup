@@ -1,0 +1,92 @@
+{{- /*
+NOTES.txt — Helm will render this and print it after install/upgrade.
+*/ -}}
+
+{{- $airflowName := printf "%s-webserver" .Release.Name | default (printf "%s-airflow" .Release.Name) }}
+{{- $mlflowName := printf "%s-tracking" .Values.mlflow.fullnameOverride | default (printf "%s-mlflow" .Release.Name) }}
+{{- $minioName := .Values.minio.fullnameOverride | default (printf "%s-minio" .Release.Name) }}
+{{- $namespace := .Release.Namespace -}}
+
+=======================================================================
+AI Toolkit has been deployed into the '{{ .Release.Namespace }}' namespace.
+
+How to access the Airflow UI
+----------------------------
+
+
+{{- $airflowSvc := lookup "v1" "Service" $namespace $airflowName }}
+{{- if $airflowSvc }}
+  {{- if eq .Values.airflow.webserver.service.type "LoadBalancer" }}
+    {{- $ing := (index $airflowSvc.status.loadBalancer.ingress 0) }}
+    External: http://{{ $ing.ip | default $ing.hostname | default "<pending>" }}:{{ (index .Values.airflow.webserver.service.ports 0).port }}
+  {{- else if eq .Values.airflow.webserver.service.type "NodePort" }}
+    NodePort: http://<NodeIP>:{{ (index $airflowSvc.spec.ports 0).nodePort }}
+  {{- else }}
+    ClusterIP: http://{{ $airflowName }}.{{ $namespace }}.svc.cluster.local:{{ (index .Values.airflow.webserver.service.ports 0).port }}
+
+    To access the Airflow UI from outside the cluster, you can use port-forwarding:
+      kubectl port-forward -n {{ $namespace }} svc/{{ $airflowName }} 8080:{{ (index .Values.airflow.webserver.service.ports 0).port }}
+  {{- end }}
+{{- else }}
+  Service not yet available. Run:
+    kubectl get svc -n {{ $namespace }} | grep {{ $airflowName }}
+{{- end }}
+
+
+{{- $gitSyncEnabled := .Values.airflow.dags.gitSync.enabled | default false -}}
+{{- if $gitSyncEnabled }}
+
+    DAGs loaded via GitSync
+    -------------------------
+        Your Airflow DAGs are being loaded via GitSync from the repository '{{ .Values.airflow.dags.gitSync.repo }}' in the '{{ .Values.airflow.dags.gitSync.branch }}' branch.
+
+        To update the DAGs, push your changes to the configured Git repository and branch.
+
+{{- end }}
+
+How to access MLflow UI
+-------------------------
+
+{{- $mlflowSvc := lookup "v1" "Service" $namespace $mlflowName }}
+{{- if $mlflowSvc }}
+  {{- if eq .Values.mlflow.tracking.service.type "LoadBalancer" }}
+    {{- $ing := (index $mlflowSvc.status.loadBalancer.ingress 0) }}
+    External: http://{{ $ing.ip | default $ing.hostname | default "<pending>" }}:{{ .Values.mlflow.tracking.service.ports.http }}
+  {{- else if eq .Values.mlflow.tracking.service.type "NodePort" }}
+    NodePort: http://<NodeIP>:{{ (index $mlflowSvc.spec.ports 0).nodePort }}
+  {{- else }}
+    ClusterIP: http://{{ $mlflowName }}.{{ $namespace }}.svc.cluster.local:{{ .Values.mlflow.tracking.service.ports.http }}
+
+    To access the MLflow UI from outside the cluster, you can use port-forwarding:
+      kubectl port-forward -n {{ $namespace }} svc/{{ $mlflowName }} {{ .Values.mlflow.tracking.service.ports.http }}:{{ .Values.mlflow.tracking.service.ports.http }}
+  {{- end }}
+{{- else }}
+  Service not yet available. Run:
+    kubectl get svc -n {{ $namespace }} | grep {{ $mlflowName }}
+{{- end }}
+
+How to access MinIO Console
+-------------------------
+
+{{- $minioSvc := lookup "v1" "Service" $namespace $minioName }}
+{{- if $minioSvc }}
+  {{- if eq .Values.minio.service.type "LoadBalancer" }}
+    {{- $ing := (index $minioSvc.status.loadBalancer.ingress 0) }}
+    External API: http://{{ $ing.ip | default $ing.hostname | default "<pending>" }}:{{ .Values.minio.service.ports.api }}
+    External Console: http://{{ $ing.ip | default $ing.hostname | default "<pending>" }}:{{ .Values.minio.service.ports.console }}
+  {{- else if eq .Values.minio.service.type "NodePort" }}
+    NodePort API: http://<NodeIP>:{{ (index $minioSvc.spec.ports 0).nodePort }}
+    NodePort Console: http://<NodeIP>:{{ (index $minioSvc.spec.ports 1).nodePort }}
+  {{- else }}
+    ClusterIP API: http://{{ $minioName }}.{{ $namespace }}.svc.cluster.local:{{ .Values.minio.service.ports.api }}
+    ClusterIP Console: http://{{ $minioName }}.{{ $namespace }}.svc.cluster.local:{{ .Values.minio.service.ports.console }}
+    To access the MinIO from outside the cluster, you can use port-forwarding:
+        kubectl port-forward -n {{ $namespace }} svc/{{ $minioName }} {{ .Values.minio.service.ports.console }}:{{ .Values.minio.service.ports.console }}
+        kubectl port-forward -n {{ $namespace }} svc/{{ $minioName }} {{ .Values.minio.service.ports.api }}:{{ .Values.minio.service.ports.api }}
+  {{- end }}
+{{- else }}
+  Service not yet available. Run:
+    kubectl get svc -n {{ $namespace }} | grep {{ $minioName }}
+{{- end }}
+
+=======================================================================

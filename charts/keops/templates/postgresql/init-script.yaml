@@ -1,0 +1,14 @@
+{{- if (.Values.postgresql.primary.initdb.scriptsConfigMap) }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ .Values.postgresql.primary.initdb.scriptsConfigMap }}
+  namespace: {{ .Release.Namespace }}
+data:
+    00_init_database.sql: |
+        CREATE ROLE {{ .Values.mlflow.externalDatabase.user }} WITH LOGIN PASSWORD '{{ .Values.mlflow.externalDatabase.password }}';
+        CREATE DATABASE {{ .Values.mlflow.externalDatabase.authDatabase }} OWNER {{ .Values.mlflow.externalDatabase.user }};
+        GRANT ALL PRIVILEGES ON DATABASE {{ .Values.mlflow.externalDatabase.authDatabase }} TO {{ .Values.mlflow.externalDatabase.user }};
+        CREATE DATABASE {{ .Values.mlflow.externalDatabase.database }} OWNER {{ .Values.mlflow.externalDatabase.user }};
+        GRANT ALL PRIVILEGES ON DATABASE {{ .Values.mlflow.externalDatabase.database }} TO {{ .Values.mlflow.externalDatabase.user }};
+{{- end }}

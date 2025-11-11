@@ -1,0 +1,153 @@
+{{- /*
+NOTES.txt — Helm will render this and print it after install/upgrade.
+It adapts the output based on the configured service types.
+*/ -}}
+
+{{- $namespace := .Release.Namespace -}}
+{{- $airflowName := printf "%s-webserver" .Release.Name -}}
+{{- $mlflowName := printf "%s-tracking" .Values.mlflow.fullnameOverride | default (printf "%s-mlflow-tracking" .Release.Name) -}}
+{{- $minioName := .Values.minio.fullnameOverride | default (printf "%s-minio" .Release.Name) -}}
+{{- $grafanaSvc := printf "%s-grafana" .Release.Name -}}
+{{- $daggenName :=  .Values.daggen.service.name -}}
+
+=======================================================================
+AI Toolkit has been deployed into the '{{ $namespace }}' namespace.
+=======================================================================
+
+{{/* ---------------------- AIRFLOW ---------------------- */}}
+How to access the Airflow UI
+----------------------------
+{{- $airflowType := .Values.airflow.webserver.service.type | default "ClusterIP" }}
+
+{{- if eq $airflowType "LoadBalancer" }}
+  Run the following to get the external IP:
+    kubectl get svc -n {{ $namespace }} {{ $airflowName }} -o jsonpath='{.status.loadBalancer.ingress[0].ip}'
+  Once ready, access it at:
+    http://<EXTERNAL-IP>:{{ (index .Values.airflow.webserver.service.ports 0).port }}
+{{- else if eq $airflowType "NodePort" }}
+  Run the following to get the assigned NodePort:
+    kubectl get svc -n {{ $namespace }} {{ $airflowName }} -o jsonpath='{.spec.ports[0].nodePort}'
+  Access via:
+    http://<NODE-IP>:<NODEPORT>
+{{- else }}
+  Access inside the cluster:
+    http://{{ $airflowName }}.{{ $namespace }}.svc.cluster.local:{{ (index .Values.airflow.webserver.service.ports 0).port }}
+  Or port-forward from your local machine:
+    kubectl port-forward -n {{ $namespace }} svc/{{ $airflowName }} 8080:{{ (index .Values.airflow.webserver.service.ports 0).port }}
+{{- end }}
+
+  Credentials:
+    Username: {{ .Values.airflow.webserver.defaultUser.username }}
+    Password: {{ .Values.airflow.webserver.defaultUser.password }}
+
+{{- $gitSyncEnabled := .Values.airflow.dags.gitSync.enabled | default false -}}
+{{- if $gitSyncEnabled }}
+
+  DAGs loaded via GitSync
+  -------------------------
+    Your Airflow DAGs are being loaded via GitSync from the repository '{{ .Values.airflow.dags.gitSync.repo }}' in the '{{ .Values.airflow.dags.gitSync.branch }}' branch.
+    To update the DAGs, push your changes to the configured Git repository and branch.
+
+{{- end }}
+
+{{/* ---------------------- MLFLOW ---------------------- */}}
+How to access the MLflow UI
+---------------------------
+{{- $mlflowType := .Values.mlflow.tracking.service.type | default "ClusterIP" }}
+
+{{- if eq $mlflowType "LoadBalancer" }}
+  Run the following to get the external IP:
+    kubectl get svc -n {{ $namespace }} {{ $mlflowName }} -o jsonpath='{.status.loadBalancer.ingress[0].ip}'
+  Once ready, access it at:
+    http://<EXTERNAL-IP>:{{ .Values.mlflow.tracking.service.ports.http }}
+{{- else if eq $mlflowType "NodePort" }}
+  Run the following to get the assigned NodePort:
+    kubectl get svc -n {{ $namespace }} {{ $mlflowName }} -o jsonpath='{.spec.ports[0].nodePort}'
+  Access via:
+    http://<NODE-IP>:<NODEPORT>
+{{- else }}
+  Access inside the cluster:
+    http://{{ $mlflowName }}.{{ $namespace }}.svc.cluster.local:{{ .Values.mlflow.tracking.service.ports.http }}
+  Or port-forward from your local machine:
+    kubectl port-forward -n {{ $namespace }} svc/{{ $mlflowName }} {{ .Values.mlflow.tracking.service.ports.http }}:{{ .Values.mlflow.tracking.service.ports.http }}
+{{- end }}
+
+{{/* ---------------------- MINIO ---------------------- */}}
+How to access MinIO
+-------------------
+{{- $minioType := .Values.minio.service.type | default "ClusterIP" }}
+
+{{- if eq $minioType "LoadBalancer" }}
+  Run the following to get the external IP:
+    kubectl get svc -n {{ $namespace }} {{ $minioName }} -o jsonpath='{.status.loadBalancer.ingress[0].ip}'
+  Once ready, access at:
+    Console → http://<EXTERNAL-IP>:{{ .Values.minio.service.ports.console }}
+    API     → http://<EXTERNAL-IP>:{{ .Values.minio.service.ports.api }}
+{{- else if eq $minioType "NodePort" }}
+  Run the following to get the assigned NodePorts:
+    kubectl get svc -n {{ $namespace }} {{ $minioName }} -o jsonpath='{.spec.ports[0].nodePort}'
+    kubectl get svc -n {{ $namespace }} {{ $minioName }} -o jsonpath='{.spec.ports[1].nodePort}'
+  Access via:
+    Console → http://<NODE-IP>:<CONSOLE-PORT>
+    API     → http://<NODE-IP>:<API-PORT>
+{{- else }}
+  Access inside the cluster:
+    Console → http://{{ $minioName }}.{{ $namespace }}.svc.cluster.local:{{ .Values.minio.service.ports.console }}
+    API     → http://{{ $minioName }}.{{ $namespace }}.svc.cluster.local:{{ .Values.minio.service.ports.api }}
+  Or port-forward from your local machine:
+    kubectl port-forward -n {{ $namespace }} svc/{{ $minioName }} {{ .Values.minio.service.ports.console }}:{{ .Values.minio.service.ports.console }}
+    kubectl port-forward -n {{ $namespace }} svc/{{ $minioName }} {{ .Values.minio.service.ports.api }}:{{ .Values.minio.service.ports.api }}
+{{- end }}
+
+  Credentials:
+    Access Key: {{ .Values.minio.auth.rootUser }}
+    Secret Key: {{ .Values.minio.auth.rootPassword }}
+
+How to access Grafana UI
+-------------------------
+{{- $grafanaType := index .Values "kube-prometheus-stack" "grafana" "service" "type" | default "ClusterIP" }}
+
+{{- if eq $grafanaType "LoadBalancer" }}
+  Run the following to get the external IP:
+    kubectl get svc -n {{ $namespace }} {{ $grafanaSvc }} -o jsonpath='{.status.loadBalancer.ingress[0].ip}'
+  Once ready, access it at:
+    http://<EXTERNAL-IP>:{{ (index .Values "kube-prometheus-stack" "grafana" "service" "port" ) }}
+{{- else if eq $grafanaType "NodePort" }}
+  Run the following to get the assigned NodePort:
+    kubectl get svc -n {{ $namespace }} {{ $grafanaSvc }} -o jsonpath='{.spec.ports[0].nodePort}'
+  Access via:
+    http://<NODE-IP>:<NODEPORT>
+{{- else }}
+  Access inside the cluster:
+    http://{{ $grafanaSvc }}.{{ $namespace }}.svc.cluster.local:{{ (index .Values "kube-prometheus-stack" "grafana" "service" "port" "http") }}
+  Or port-forward from your local machine:
+    kubectl port-forward -n {{ $namespace }} svc/{{ $grafanaSvc }} {{ (index .Values "kube-prometheus-stack" "grafana" "service" "port") }}:{{ (index .Values "kube-prometheus-stack" "grafana" "service" "ports" "http") }}
+{{- end }}
+
+    Credentials:
+        Username: {{ (index .Values "kube-prometheus-stack" "grafana" "adminUser") }}
+        Password: {{ (index .Values "kube-prometheus-stack" "grafana" "adminPassword") }}
+
+How to access Daggen UI
+-------------------------
+
+{{- $daggenType := .Values.daggen.service.type | default "ClusterIP" }}
+
+{{- if eq $daggenType "LoadBalancer" }}
+  Run the following to get the external IP:
+    kubectl get svc -n {{ $namespace }} {{ $daggenName }} -o jsonpath='{.status.loadBalancer.ingress[0].ip}'
+  Once ready, access it at:
+    http://<EXTERNAL-IP>:{{ .Values.daggen.service.port }}
+{{- else if eq $daggenType "NodePort" }}
+  Run the following to get the assigned NodePort:
+    kubectl get svc -n {{ $namespace }} {{ $daggenName }} -o jsonpath='{.spec.ports[0].nodePort}'
+  Access via:
+    http://<NODE-IP>:<NODEPORT>
+{{- else }}
+  Access inside the cluster:
+    http://{{ $daggenName }}.{{ $namespace }}.svc.cluster.local:{{ .Values.daggen.service.port }}
+  Or port-forward from your local machine:
+    kubectl port-forward -n {{ $namespace }} svc/{{ $daggenName }} 8080:{{ .Values.daggen.service.port }}
+{{- end }}
+
+=======================================================================

@@ -1,0 +1,14 @@
+{{- if .Values.daggen.enabled }}
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: {{ .Values.daggen.rbac.clusterRoleBinding.name }}
+subjects:
+  - kind: ServiceAccount
+    namespace: {{ .Release.Namespace }}
+    name: {{ .Values.daggen.rbac.serviceAccountName }}
+roleRef:
+  kind: ClusterRole
+  name: {{ .Values.daggen.rbac.clusterRole.name }}
+  apiGroup: rbac.authorization.k8s.io
+{{- end }}
