@@ -29,6 +29,8 @@ spec:
               value: "{{ .Values.daggen.env.AIRFLOW_URL }}"
             - name: AIRFLOW_PUBLIC_URL
               value: "http://{{ .Values.global.deviceIP }}:{{ (index .Values.airflow.webserver.service.ports 0).port }}"
+            - name: PUBLIC_IP
+              value: "{{ .Values.global.deviceIP }}"
           securityContext:
             runAsUser: {{ .Values.daggen.runAsUser }}
 {{- end }}

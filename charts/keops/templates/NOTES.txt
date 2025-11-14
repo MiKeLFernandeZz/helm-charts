@@ -81,7 +81,7 @@ How to access MinIO
   Run the following to get the external IP:
     kubectl get svc -n {{ $namespace }} {{ $minioName }} -o jsonpath='{.status.loadBalancer.ingress[0].ip}'
   Once ready, access at:
-    Console → http://<EXTERNAL-IP>:{{ .Values.minio.service.ports.console }}
+    Console → http://<EXTERNAL-IP>:{{ .Values.minio.console.service.ports.http }}
     API     → http://<EXTERNAL-IP>:{{ .Values.minio.service.ports.api }}
 {{- else if eq $minioType "NodePort" }}
   Run the following to get the assigned NodePorts:
@@ -92,10 +92,10 @@ How to access MinIO
     API     → http://<NODE-IP>:<API-PORT>
 {{- else }}
   Access inside the cluster:
-    Console → http://{{ $minioName }}.{{ $namespace }}.svc.cluster.local:{{ .Values.minio.service.ports.console }}
+    Console → http://{{ $minioName }}.{{ $namespace }}.svc.cluster.local:{{ .Values.minio.console.service.ports.http }}
     API     → http://{{ $minioName }}.{{ $namespace }}.svc.cluster.local:{{ .Values.minio.service.ports.api }}
   Or port-forward from your local machine:
-    kubectl port-forward -n {{ $namespace }} svc/{{ $minioName }} {{ .Values.minio.service.ports.console }}:{{ .Values.minio.service.ports.console }}
+    kubectl port-forward -n {{ $namespace }} svc/{{ $minioName }} {{ .Values.minio.console.service.ports.http }}:{{ .Values.minio.console.service.ports.http }}
     kubectl port-forward -n {{ $namespace }} svc/{{ $minioName }} {{ .Values.minio.service.ports.api }}:{{ .Values.minio.service.ports.api }}
 {{- end }}
 
@@ -103,6 +103,8 @@ How to access MinIO
     Access Key: {{ .Values.minio.auth.rootUser }}
     Secret Key: {{ .Values.minio.auth.rootPassword }}
 
+{{- if index .Values "kube-prometheus-stack" "enabled" }}
+{{/* ---------------------- GRAFANA ---------------------- */}}
 How to access Grafana UI
 -------------------------
 {{- $grafanaType := index .Values "kube-prometheus-stack" "grafana" "service" "type" | default "ClusterIP" }}
@@ -127,6 +129,7 @@ How to access Grafana UI
     Credentials:
         Username: {{ (index .Values "kube-prometheus-stack" "grafana" "adminUser") }}
         Password: {{ (index .Values "kube-prometheus-stack" "grafana" "adminPassword") }}
+{{- end }}
 
 How to access Daggen UI
 -------------------------

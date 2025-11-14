@@ -26,14 +26,15 @@ This chart includes the following main dependencies:
 * Kubernetes >= **1.25**
 * Helm >= **3.8**
 * Access to the repositories listed above
+* Access to the Central DAG Repository, used for Airflow workflow synchronization.
 * (Optional) NVIDIA GPU nodes if GPU components are enabled
 
 ## Installation
 
 ```bash
-helm repo add toolkit https://<your-helm-repo>
-helm dependency update ./charts/toolkit
-helm install toolkit ./charts/toolkit -n toolkit --create-namespace
+helm repo add clarus https://CLARUS-Project.github.io/helm_charts
+helm dependency update
+helm install ai-toolkit clarus/ai-toolkit -n ai-toolkit --create-namespace
 ```
 
 ### Deployment on K3s
@@ -82,7 +83,7 @@ The Helm chart provides extensive configuration options through the `values.yaml
 You can inspect the default configuration directly from the chart repository:
 
 ```bash
-helm show values toolkit > values.yaml
+helm show values clarus/ai-toolkit > values.yaml
 ```
 
 This command outputs all default parameters into a `values.yaml` file that you can modify to fit your deployment.
@@ -124,6 +125,8 @@ dcgm-exporter:
 
 The Airflow component in AI toolkit is designed to automatically load Directed Acyclic Graphs (DAGs) from a central Git repository. This feature is essential, as it enables synchronization between environments and ensures consistency in deployed workflows.
 
+Check the (central DAG repository)[https://github.com/CLARUS-Project/central-repo] for the full documentation on how to structure and manage your DAGs.
+
 The relevant section of the `values.yaml` file is as follows:
 
 ```yaml
@@ -152,7 +155,7 @@ airflow:
 * If your repository is private, ensure you have created a Kubernetes secret containing your SSH key:
 
 ```bash
-kubectl create secret generic airflow-ssh-secret --from-file=ssh-privatekey=/path/to/id_rsa -n <deploy-namespace>
+kubectl create secret generic airflow-ssh-secret --from-file=gitSshKey=/path/to/id_rsa -n <deploy-namespace>
 ```
 
 * If your repository is public, you can safely comment out the sshKeySecret line:
@@ -166,15 +169,15 @@ kubectl create secret generic airflow-ssh-secret --from-file=ssh-privatekey=/pat
 You can apply your modified configuration using the `-f` flag to specify a local `values.yaml` file:
 
 ```bash
-helm install toolkit ./charts/toolkit -n toolkit -f values.yaml
+helm install ai-toolkit clarus/ai-toolkit -n ai-toolkit --create-namespace -f values.yaml
 ```
 
 Or by setting individual parameters inline with `--set`:
 
 ```bash
-helm install toolkit ./charts/toolkit -n toolkit \
-  --set airflow.executor=CeleryExecutor \
-  --set global.imageRegistry=my-registry.local
+helm install ai-toolkit clarus/ai-toolkit -n ai-toolkit --create-namespace \
+  --set airflow.dags.gitSync.repo=https://github.com/CLARUS-Project/central-repo.git \
+  --set kube-prometheus-stack.enabled=true
 ```
 
 ## Uninstallation
@@ -182,7 +185,7 @@ helm install toolkit ./charts/toolkit -n toolkit \
 To completely remove the deployment:
 
 ```bash
-helm uninstall toolkit -n toolkit
+helm uninstall ai-toolkit -n ai-toolkit
 ```
 
 ## Versioning

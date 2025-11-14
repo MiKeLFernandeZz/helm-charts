@@ -100,10 +100,10 @@ minio:
   auth:
     ## @param minio.auth.rootUser  MinIO root user
     ##
-    rootUser: ai_toolkit
+    rootUser: toolkit
     ## @param minio.auth.rootPassword  MinIO root password
     ##
-    rootPassword: ai_toolkit123
+    rootPassword: toolkit123
 
   service:
     ## @param minio.service.type  MinIO service type
@@ -113,7 +113,6 @@ minio:
     ##
     ports:
       api: 9000
-      console: 9001
   ## @param minio.statefulset  MinIO statefulset settings
   ##
   statefulset:
@@ -129,6 +128,15 @@ minio:
     ## @param minio.clientImage.repository  MinIO client image repository
     ##
     repository: bitnamilegacy/minio-client
+  persistence:
+    ## @param minio.persistence.enabled  Enable persistence for MinIO
+    ##
+    enabled: true
+    ## @param minio.persistence.size  MinIO persistence size
+    ##
+    size: 8Gi
+    annotations:
+      "helm.sh/resource-policy": keep
 
   defaultInitContainers:
     volumePermissions:
@@ -138,6 +146,10 @@ minio:
   console:
     image:
       repository: bitnamilegacy/minio-object-browser
+    service:
+      type: LoadBalancer
+      ports:
+        http: 9001
 
 
 
@@ -179,6 +191,9 @@ airflow:
       value: "6379"
     - name: AIRFLOW_VAR_REDIS_PASSWORD
       value: ai_toolkit_redis_password_123
+    - name: AIRFLOW_VAR_REGISTRY_URL
+      value: ai-toolkit-docker-registry.ai-toolkit.svc.cluster.local:4000
+      
     ## TODO: Uncomment and set the following variables according to your IDS/ECC setup
     # - name: "AIRFLOW_VAR_CONNECTOR_EDGE_IP"
     #   value: "{CONNECTOR_EDGE_IP}"
@@ -205,10 +220,10 @@ airflow:
       secretKey: "AIRFLOW_CONN_AWS"
   ## @param airflow.extraSecrets Extra Kubernetes Secrets to be created
   ##
-  extraSecrets:
-    my-airflow-connections:
-      data: |
-        AIRFLOW_CONN_AWS: {{ printf "aws://ai_toolkit:ai_toolkit123@/?endpoint_url=http%%3A%%2F%%2Fai-toolkit-minio%%3A9000" | b64enc }}
+  # extraSecrets:
+  #   my-airflow-connections:
+  #     data: |
+  #       AIRFLOW_CONN_AWS: {{ printf "aws://ai_toolkit:ai_toolkit123@/?endpoint_url=http%%3A%%2F%%2Fai-toolkit-minio%%3A9000" | b64enc }}
   ## @param airflow.postgresql PostgreSQL settings
   ##
   postgresql:
@@ -269,6 +284,9 @@ airflow:
         - name: airflow-ui
           port: 8080
           targetPort: airflow-ui
+    startupProbe:
+      timeoutSeconds: 240
+
   ## @param airflow.triggerer  Airflow triggerer settings
   ##
   triggerer:
@@ -492,10 +510,10 @@ mlflow:
     port: 9000
     ## @param mlflow.externalS3.accessKeyID  Mlflow external S3 access key ID
     ##
-    accessKeyID: ai_toolkit
+    accessKeyID: toolkit
     ## @param mlflow.externalS3.accessKeySecret  Mlflow external S3 access key secret
     ##
-    accessKeySecret: ai_toolkit123
+    accessKeySecret: toolkit123
     ## @param mlflow.externalS3.protocol  Mlflow external S3 protocol
     ##
     protocol: http
@@ -546,7 +564,7 @@ dcgm-exporter:
       prometheus.io/path: "/metrics"
 
 kube-prometheus-stack:
-  enabled: false
+  enabled: true
   alertmanager:
     service:
       type: ClusterIP
@@ -618,10 +636,10 @@ daggen:
   image:
     ## @param daggen.image.repository  DAG generator UI image repository
     ##
-    repository: mfernandezlabastida/airflow-connect
+    repository: mfernandezlabastida/daggen
     ## @param daggen.image.tag  DAG generator UI image tag\
     ##
-    tag: gpu-gh
+    tag: clarus_release
     ## @param daggen.image.pullPolicy  DAG generator UI image pull policy
     ##
     pullPolicy: IfNotPresent
@@ -629,7 +647,7 @@ daggen:
   env:
     ## @param daggen.env.REGISTRY_URL  DAG generator UI Docker registry URL
     ##
-    REGISTRY_URL: "docker-registry"
+    REGISTRY_URL: "http://ai-toolkit-docker-registry"
     ## @param daggen.env.REGISTRY_PORT  DAG generator UI Docker registry port
     ##
     REGISTRY_PORT: "4000"
